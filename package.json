@@ -1,0 +1,9 @@
+{
+  "name": "web-pc",
+  "version": "1.0.0",
+  "main": "agent.js",
+  "dependencies": {
+    "firebase-admin": "^13.10.0",
+    "screenshot-desktop": "^1.15.4"
+  }
+}

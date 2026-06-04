@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase PC Control</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { max-width: 600px; width: 100%; background: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #4CAF50; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        button { padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-shutdown { background: #f44336; color: white; }
+        .btn-restart { background: #ff9800; color: white; }
+        .btn-screenshot { background: #2196F3; color: white; grid-column: span 2; }
+        .btn-shell { background: #4CAF50; color: white; }
+        button:hover { opacity: 0.8; }
+        textarea, input { width: 100%; padding: 10px; margin-bottom: 10px; background: #2d2d2d; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        #output { background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 150px; overflow-y: auto; border-radius: 5px; margin-top: 10px; white-space: pre-wrap; }
+        #screenshot-preview { width: 100%; margin-top: 10px; border-radius: 5px; display: none; }
+        .status { text-align: center; margin-bottom: 10px; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>PC Control Panel</h1>
+    <div id="status" class="status">Connecting to Firebase...</div>
+
+    <div class="btn-group">
+        <button class="btn-shutdown" onclick="sendCommand('power', 'shutdown')">Shutdown</button>
+        <button class="btn-restart" onclick="sendCommand('power', 'restart')">Restart</button>
+        <button class="btn-screenshot" onclick="sendCommand('screenshot')">Take Screenshot</button>
+    </div>
+
+    <div>
+        <label>Shell Command:</label>
+        <input type="text" id="shell-input" placeholder="e.g. dir, ipconfig, msg * hello" onkeypress="if(event.key === 'Enter') sendShell()">
+        <button class="btn-shell" onclick="sendShell()" style="width: 100%;">Run Command</button>
+    </div>
+
+    <div id="output">Output will appear here...</div>
+    <img id="screenshot-preview" alt="Screenshot preview">
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildChanged, limitToLast, query } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    // TODO: Replace with your Firebase config
+    const firebaseConfig = {
+        apiKey: "AIzaSyB1CcrJmQetE9rz85ETDljpCmmp87ZpRUw",
+        authDomain: "project-that-control-pc.firebaseapp.com",
+        projectId: "project-that-control-pc",
+        storageBucket: "project-that-control-pc.firebasestorage.app",
+        messagingSenderId: "340579506273",
+        appId: "1:340579506273:web:cee02e89a3c8f9cde77220",
+        measurementId: "G-1XP19RBE9J"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const commandsRef = ref(db, 'commands');
+
+    document.getElementById('status').innerText = "Connected to Firebase";
+
+    window.sendCommand = (type, payload = '') => {
+        const newCmdRef = push(commandsRef, {
+            type,
+            payload,
+            executed: false,
+            timestamp: Date.now()
+        });
+
+        document.getElementById('output').innerText = `Sent: ${type} ${payload}\nWaiting for response...`;
+        
+        // Listen for the result on this specific command
+        onChildChanged(commandsRef, (snapshot) => {
+            if (snapshot.key === newCmdRef.key) {
+                const data = snapshot.val();
+                if (data.executed) {
+                    if (data.type === 'screenshot' && data.result) {
+                        const img = document.getElementById('screenshot-preview');
+                        img.src = data.result;
+                        img.style.display = 'block';
+                        document.getElementById('output').innerText = "Screenshot captured!";
+                    } else {
+                        document.getElementById('output').innerText = data.result || data.error || "Executed (no output)";
+                    }
+                }
+            }
+        });
+    };
+
+    window.sendShell = () => {
+        const input = document.getElementById('shell-input');
+        if (input.value.trim()) {
+            window.sendCommand('shell', input.value);
+            input.value = '';
+        }
+    };
+</script>
+
+</body>
+</html>
