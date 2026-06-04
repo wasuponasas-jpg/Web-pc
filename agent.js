@@ -8,7 +8,6 @@ const fs = require('fs');
 const serviceAccount = require('./serviceAccountKey.json');
 
 // 2. Initialize Firebase
-// Replace 'YOUR_DATABASE_URL' with your actual Firebase Realtime Database URL
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://project-that-control-pc-default-rtdb.asia-southeast1.firebasedatabase.app/" 
@@ -17,7 +16,10 @@ admin.initializeApp({
 const db = admin.database();
 const commandsRef = db.ref('commands');
 
+let currentCwd = process.cwd();
+
 console.log('PC Agent is running and listening for commands...');
+console.log(`Current working directory: ${currentCwd}`);
 
 // 3. Listen for new commands
 commandsRef.on('child_added', (snapshot) => {
@@ -26,7 +28,6 @@ commandsRef.on('child_added', (snapshot) => {
 
   if (command && !command.executed) {
     console.log(`Received command: ${command.type}`, command.payload || '');
-
     handleCommand(command, commandId);
   }
 });
@@ -68,8 +69,41 @@ async function handleCommand(command, commandId) {
 }
 
 function runShell(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (error, stdout, stderr) => {
+  return new Promise((resolve) => {
+    const trimmedCmd = cmd.trim();
+    
+    // Support for 'cd'
+    if (trimmedCmd.startsWith('cd ') || trimmedCmd === 'cd') {
+      if (trimmedCmd === 'cd') {
+        resolve(currentCwd);
+        return;
+      }
+      
+      const newDir = trimmedCmd.substring(3).trim().replace(/"/g, '');
+      const targetPath = path.resolve(currentCwd, newDir);
+      
+      if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isDirectory()) {
+        currentCwd = targetPath;
+        resolve(`Changed directory to: ${currentCwd}`);
+      } else {
+        resolve(`Error: Directory not found: ${targetPath}`);
+      }
+      return;
+    }
+
+    // Support for drive change (e.g., "D:")
+    if (/^[a-zA-Z]:$/.test(trimmedCmd)) {
+        const targetDrive = trimmedCmd + '\\';
+        if (fs.existsSync(targetDrive)) {
+            currentCwd = targetDrive;
+            resolve(`Changed drive to: ${currentCwd}`);
+        } else {
+            resolve(`Error: Drive not found: ${trimmedCmd}`);
+        }
+        return;
+    }
+
+    exec(cmd, { cwd: currentCwd }, (error, stdout, stderr) => {
       if (error) {
         resolve(`Error: ${stderr || error.message}`);
       } else {
@@ -81,7 +115,7 @@ function runShell(cmd) {
 
 function handlePower(action) {
   if (action === 'shutdown') {
-    exec('shutdown /s /t 30'); // 30 seconds delay
+    exec('shutdown /s /t 30');
   } else if (action === 'restart') {
     exec('shutdown /r /t 30');
   } else if (action === 'abort') {
