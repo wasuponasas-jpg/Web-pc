@@ -3,29 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase PC Control</title>
+    <title>Secure PC Control</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { max-width: 600px; width: 100%; background: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { text-align: center; color: #4CAF50; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        button { padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-shutdown { background: #f44336; color: white; }
-        .btn-restart { background: #ff9800; color: white; }
-        .btn-screenshot { background: #2196F3; color: white; grid-column: span 2; }
-        .btn-shell { background: #4CAF50; color: white; }
-        button:hover { opacity: 0.8; }
-        textarea, input { width: 100%; padding: 10px; margin-bottom: 10px; background: #2d2d2d; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
-        #output { background: #000; color: #0f0; padding: 10px; font-family: monospace; height: 150px; overflow-y: auto; border-radius: 5px; margin-top: 10px; white-space: pre-wrap; }
-        #screenshot-preview { width: 100%; margin-top: 10px; border-radius: 5px; display: none; }
-        .status { text-align: center; margin-bottom: 10px; color: #888; }
+        :root {
+            --primary: #4CAF50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --info: #2196F3;
+            --bg: #121212;
+            --card: #1e1e1e;
+            --input: #2d2d2d;
+            --text: #ffffff;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px; 
+        }
+
+        .container { 
+            max-width: 600px; 
+            width: 100%; 
+            background: var(--card); 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 30px rgba(0,0,0,0.7); 
+            display: none; /* Hidden until auth */
+        }
+
+        .auth-container {
+            max-width: 400px;
+            width: 100%;
+            background: var(--card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+            text-align: center;
+        }
+
+        h1 { text-align: center; color: var(--primary); margin-bottom: 25px; }
+        
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        
+        button { 
+            padding: 14px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 14px;
+            transition: all 0.2s ease; 
+            color: white;
+        }
+
+        button:active { transform: scale(0.98); }
+        button:hover { filter: brightness(1.2); }
+
+        .btn-shutdown { background: var(--danger); }
+        .btn-restart { background: var(--warning); }
+        .btn-screenshot { background: var(--info); grid-column: span 2; }
+        .btn-shell { background: var(--primary); width: 100%; }
+        .btn-logout { background: transparent; border: 1px solid #444; color: #888; margin-top: 20px; width: 100%; }
+
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            background: var(--input); 
+            border: 1px solid #444; 
+            color: white; 
+            border-radius: 8px; 
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--primary); }
+
+        #output { 
+            background: #000; 
+            color: #0f0; 
+            padding: 15px; 
+            font-family: 'Consolas', monospace; 
+            height: 180px; 
+            overflow-y: auto; 
+            border-radius: 8px; 
+            margin-top: 20px; 
+            white-space: pre-wrap;
+            font-size: 13px;
+            border: 1px solid #333;
+        }
+
+        #screenshot-preview { width: 100%; margin-top: 15px; border-radius: 8px; display: none; border: 1px solid #333; }
+        
+        .status { text-align: center; margin-bottom: 15px; color: #888; font-size: 14px; }
+        
+        .error-msg { color: var(--danger); font-size: 14px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<!-- Login Section -->
+<div id="auth-section" class="auth-container">
+    <h1>Admin Login</h1>
+    <input type="email" id="login-email" placeholder="Email Address">
+    <input type="password" id="login-password" placeholder="Password">
+    <div style="display: flex; align-items: center; margin-bottom: 15px; font-size: 14px; color: #888;">
+        <input type="checkbox" id="remember-me" style="width: auto; margin-bottom: 0; margin-right: 10px;">
+        <label for="remember-me">Keep me logged in</label>
+    </div>
+    <button class="btn-shell" onclick="handleLogin()">Sign In</button>
+    <div id="auth-error" class="error-msg">Invalid credentials</div>
+    <p style="font-size: 12px; color: #555; margin-top: 20px;">Restricted access only.</p>
+</div>
+
+<!-- Control Section -->
+<div id="control-section" class="container">
     <h1>PC Control Panel</h1>
-    <div id="status" class="status">Connecting to Firebase...</div>
+    <div id="status" class="status">Authorized Session</div>
 
     <div class="btn-group">
         <button class="btn-shutdown" onclick="sendCommand('power', 'shutdown')">Shutdown</button>
@@ -34,21 +136,24 @@
     </div>
 
     <div>
-        <label>Shell Command:</label>
-        <input type="text" id="shell-input" placeholder="e.g. dir, ipconfig, msg * hello" onkeypress="if(event.key === 'Enter') sendShell()">
-        <button class="btn-shell" onclick="sendShell()" style="width: 100%;">Run Command</button>
+        <label style="display: block; margin-bottom: 8px; color: #888;">Execute Shell Command:</label>
+        <input type="text" id="shell-input" placeholder="e.g. dir, ipconfig" onkeypress="if(event.key === 'Enter') sendShell()">
+        <button class="btn-shell" onclick="sendShell()">Run Command</button>
     </div>
 
-    <div id="output">Output will appear here...</div>
+    <div id="output">System initialized...</div>
     <img id="screenshot-preview" alt="Screenshot preview">
+
+    <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
 </div>
 
 <!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildChanged, limitToLast, query } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, push, onChildChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
-    // TODO: Replace with your Firebase config
+    // Firebase configuration (Keep this private!)
     const firebaseConfig = {
         apiKey: "AIzaSyB1CcrJmQetE9rz85ETDljpCmmp87ZpRUw",
         authDomain: "project-that-control-pc.firebaseapp.com",
@@ -62,21 +167,59 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app);
     const commandsRef = ref(db, 'commands');
 
-    document.getElementById('status').innerText = "Connected to Firebase";
+    // UI Elements
+    const authSection = document.getElementById('auth-section');
+    const controlSection = document.getElementById('control-section');
+    const authError = document.getElementById('auth-error');
+
+    // Handle Authentication State
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            authSection.style.display = 'none';
+            controlSection.style.display = 'block';
+            console.log("Authenticated as:", user.email);
+        } else {
+            authSection.style.display = 'block';
+            controlSection.style.display = 'none';
+        }
+    });
+
+    window.handleLogin = async () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        const rememberMe = document.getElementById('remember-me').checked;
+        authError.style.display = 'none';
+
+        try {
+            const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistence);
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (error) {
+            authError.innerText = error.message;
+            authError.style.display = 'block';
+        }
+    };
+
+    window.handleLogout = () => {
+        signOut(auth);
+    };
 
     window.sendCommand = (type, payload = '') => {
+        if (!auth.currentUser) return;
+
         const newCmdRef = push(commandsRef, {
             type,
             payload,
             executed: false,
+            sender: auth.currentUser.uid, // Track who sent it
             timestamp: Date.now()
         });
 
-        document.getElementById('output').innerText = `Sent: ${type} ${payload}\nWaiting for response...`;
+        document.getElementById('output').innerText = `[${new Date().toLocaleTimeString()}] Sent: ${type} ${payload}\nWaiting for response...`;
         
-        // Listen for the result on this specific command
         onChildChanged(commandsRef, (snapshot) => {
             if (snapshot.key === newCmdRef.key) {
                 const data = snapshot.val();
@@ -105,3 +248,4 @@
 
 </body>
 </html>
+
